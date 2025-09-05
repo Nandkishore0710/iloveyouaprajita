@@ -138,29 +138,164 @@ function formatTime(time) {
 const truthBtn = document.getElementById('truth-btn');
 const dareBtn = document.getElementById('dare-btn');
 const questionEl = document.getElementById('question');
+const categorySelect = document.getElementById('td-category');
+const markDoneBtn = document.getElementById('mark-done');
+const markNotDoneBtn = document.getElementById('mark-not-done');
+const actionStatusEl = document.getElementById('action-status');
+const actionButtonsEl = document.querySelector('.action-buttons');
 
-const truthQuestions = [
-    "What's your favorite memory of us together?",
-    "What was your first impression of me?",
-    "What's something you've always wanted to tell me?"
-];
+// TD state and history
+let currentTDItem = null; // { type, category, text, createdBy, timestamp }
+let tdHistory = JSON.parse(localStorage.getItem('tdHistory') || '[]');
 
-const dareChallenges = [
-    "Give me a 30-second massage.",
-    "Whisper something sweet in my ear.",
-    "Recreate our first date."
-];
+const truthQuestions = {
+    caring: [
+        "How can I make your day easier when you're stressed?",
+        "What is one small act of care that means a lot to you?",
+        "When do you feel most supported by me?"
+    ],
+    sweet: [
+        "What's the sweetest thing I've ever done for you?",
+        "What cute habit of mine do you secretly love?",
+        "Describe our relationship in three sweet words."
+    ],
+    naughty: [
+        "What's your favorite way to be teased?",
+        "What outfit of mine do you find irresistible?",
+        "Tell me a playful fantasy you've had about us."
+    ],
+    flirty: [
+        "What was the moment you knew you were into me?",
+        "What's your favorite compliment to receive from me?",
+        "Which of my features do you find most attractive?"
+    ],
+    funny: [
+        "What was our funniest moment together?",
+        "What's a silly nickname you secretly want?",
+        "What's the funniest thing you've done to impress me?"
+    ],
+    deep: [
+        "What does love mean to you right now?",
+        "What fear have you overcome because of our relationship?",
+        "What do you hope we look back on proudly in 10 years?"
+    ]
+};
 
-const showRandom = (arr, element) => {
-    if (!element) return;
-    const randomIndex = Math.floor(Math.random() * arr.length);
-    element.textContent = arr[randomIndex];
+const dareChallenges = {
+    caring: [
+        "Bring me water and give me a cozy 30-second cuddle.",
+        "Write a quick love affirmation and stick it somewhere visible.",
+        "Give a gentle head massage for one minute."
+    ],
+    sweet: [
+        "Say three things you adore about me.",
+        "Send me a surprise sweet text later today.",
+        "Give me your warmest hug for 20 seconds."
+    ],
+    naughty: [
+        "Whisper something naughty in my ear.",
+        "Give me a flirty wink and a kiss.",
+        "Text me a playful message for later."
+    ],
+    flirty: [
+        "Give me your best pick-up line.",
+        "Hold eye contact for 15 seconds and smile.",
+        "Dance with me for 30 seconds, no music allowed!"
+    ],
+    funny: [
+        "Do a dramatic reading of a random text on your phone.",
+        "Impersonate me (lovingly) for 20 seconds.",
+        "Tell a joke and make me laugh."
+    ],
+    deep: [
+        "Share one dream you want us to pursue together.",
+        "Write a one-line promise for our future.",
+        "Tell me something meaningful you’ve never said out loud."
+    ]
+};
+
+function getPoolFromCategory(map, category) {
+    if (!category || category === 'all') {
+        return Object.values(map).flat();
+    }
+    return map[category] || [];
+}
+
+const showRandom = (pool, element) => {
+    if (!element || pool.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    element.textContent = pool[randomIndex];
     element.style.animation = 'fadeIn 0.5s';
     setTimeout(() => element.style.animation = '', 500);
 };
 
-truthBtn?.addEventListener('click', () => showRandom(truthQuestions, questionEl));
-dareBtn?.addEventListener('click', () => showRandom(dareChallenges, questionEl));
+truthBtn?.addEventListener('click', () => {
+    const category = categorySelect?.value || 'all';
+    const pool = getPoolFromCategory(truthQuestions, category);
+    const text = pickRandom(pool);
+    renderTDItem('truth', category, text);
+});
+
+dareBtn?.addEventListener('click', () => {
+    const category = categorySelect?.value || 'all';
+    const pool = getPoolFromCategory(dareChallenges, category);
+    const text = pickRandom(pool);
+    renderTDItem('dare', category, text);
+});
+
+function pickRandom(pool) {
+    if (!pool || pool.length === 0) return '';
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    return pool[randomIndex];
+}
+
+function renderTDItem(type, category, text) {
+    if (!questionEl || !text) return;
+    currentTDItem = {
+        type,
+        category,
+        text,
+        createdBy: localStorage.getItem('currentUser') || 'guest',
+        timestamp: new Date().toISOString()
+    };
+    questionEl.textContent = text;
+    questionEl.style.animation = 'fadeIn 0.5s';
+    setTimeout(() => questionEl.style.animation = '', 500);
+    // Persist current item and update visibility based on role
+    localStorage.setItem('tdCurrent', JSON.stringify(currentTDItem));
+    if (actionStatusEl) {
+        actionStatusEl.textContent = 'Waiting for partner to mark Done/Not Done...';
+        actionStatusEl.classList.remove('success', 'fail');
+    }
+    updateTDActionVisibility();
+}
+
+function finalizeTD(status) {
+    if (!currentTDItem) return;
+    const marker = localStorage.getItem('currentUser') || 'guest';
+    // Only allow partner (not creator) to mark
+    if (marker === currentTDItem.createdBy) {
+        return; // creator cannot mark their own prompt
+    }
+    const record = { ...currentTDItem, status, markedBy: marker, markedAt: new Date().toISOString() };
+    tdHistory.unshift(record);
+    localStorage.setItem('tdHistory', JSON.stringify(tdHistory));
+    if (actionStatusEl) {
+        actionStatusEl.textContent = status === 'done' ? `Marked Done by ${marker}` : `Marked Not Done by ${marker}`;
+        actionStatusEl.classList.toggle('success', status === 'done');
+        actionStatusEl.classList.toggle('fail', status === 'not_done');
+    }
+    // Disable until next item
+    markDoneBtn && (markDoneBtn.disabled = true);
+    markNotDoneBtn && (markNotDoneBtn.disabled = true);
+    currentTDItem = null;
+    localStorage.removeItem('tdCurrent');
+    // Hide buttons after completion
+    if (actionButtonsEl) actionButtonsEl.style.display = 'none';
+}
+
+markDoneBtn?.addEventListener('click', () => finalizeTD('done'));
+markNotDoneBtn?.addEventListener('click', () => finalizeTD('not_done'));
 
 // 3. Love Notes
 const noteText = document.getElementById('note-text');
@@ -481,4 +616,47 @@ document.addEventListener('DOMContentLoaded', () => {
     displaySongs();
     initMoodCalendar();
     updateAnniversaryCounter();
+    // Restore active Truth/Dare item if present
+    try {
+        const saved = JSON.parse(localStorage.getItem('tdCurrent') || 'null');
+        if (saved && saved.text) {
+            currentTDItem = saved;
+            if (questionEl) questionEl.textContent = saved.text;
+            if (actionStatusEl) {
+                actionStatusEl.textContent = 'Waiting for partner to mark Done/Not Done...';
+                actionStatusEl.classList.remove('success', 'fail');
+            }
+            updateTDActionVisibility();
+        } else {
+            // No active item; keep buttons disabled/hidden
+            if (actionButtonsEl) actionButtonsEl.style.display = 'none';
+        }
+    } catch (e) {
+        if (actionButtonsEl) actionButtonsEl.style.display = 'none';
+    }
 });
+
+function updateTDActionVisibility() {
+    if (!actionButtonsEl) return;
+    const user = localStorage.getItem('currentUser') || 'guest';
+    if (!currentTDItem) {
+        actionButtonsEl.style.display = 'none';
+        markDoneBtn && (markDoneBtn.disabled = true);
+        markNotDoneBtn && (markNotDoneBtn.disabled = true);
+        return;
+    }
+    const isCreator = user === currentTDItem.createdBy;
+    if (isCreator) {
+        // Creator should NOT see action buttons
+        actionButtonsEl.style.display = 'none';
+        markDoneBtn && (markDoneBtn.disabled = true);
+        markNotDoneBtn && (markNotDoneBtn.disabled = true);
+        if (actionStatusEl) actionStatusEl.textContent = 'You started this. Waiting for partner...';
+    } else {
+        // Partner can see and use action buttons
+        actionButtonsEl.style.display = 'flex';
+        markDoneBtn && (markDoneBtn.disabled = false);
+        markNotDoneBtn && (markNotDoneBtn.disabled = false);
+        if (actionStatusEl) actionStatusEl.textContent = 'Please mark Done or Not Done.';
+    }
+}
