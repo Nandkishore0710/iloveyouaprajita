@@ -284,28 +284,13 @@ addBucketItemBtn?.addEventListener('click', () => {
 const togetherDaysEl = document.getElementById('together-days');
 const togetherMonthsEl = document.getElementById('together-months');
 const togetherYearsEl = document.getElementById('together-years');
-const startDateInput = document.getElementById('start-date');
-const saveDateBtn = document.getElementById('save-date');
-
-let startDate = localStorage.getItem('relationshipStartDate');
-if (startDate) {
-    startDateInput.value = startDate;
-    updateAnniversaryCounter();
-    setInterval(updateAnniversaryCounter, 3600000); // Update every hour
-}
-
-saveDateBtn?.addEventListener('click', () => {
-    if (!startDateInput?.value) return alert('Please select a date');
-    startDate = startDateInput.value;
-    localStorage.setItem('relationshipStartDate', startDate);
-    updateAnniversaryCounter();
-    setInterval(updateAnniversaryCounter, 3600000);
-});
+// Fixed relationship start date (use Date components to avoid timezone parsing issues)
+const START_DATE = new Date(2025, 7, 6); // August is month index 7
+updateAnniversaryCounter();
+setInterval(updateAnniversaryCounter, 3600000); // Update every hour
 
 function updateAnniversaryCounter() {
-    if (!startDate) return;
-    
-    const start = new Date(startDate);
+    const start = START_DATE;
     const now = new Date();
     const diffTime = now - start;
     const diffDays = Math.floor(diffTime / 86400000);
