@@ -29,6 +29,8 @@ loginForm?.addEventListener('submit', (e) => {
         // Initialize fixed dates
         setTogetherText();
         startBirthdayCountdown();
+        // Restore any active Truth/Dare and update visibility for this user
+        restoreTDFromStorage();
     } else {
         // Show error message
         errorMessage.style.display = 'block';
@@ -36,6 +38,28 @@ loginForm?.addEventListener('submit', (e) => {
             errorMessage.style.display = 'none';
         }, 3000);
     }
+
+function restoreTDFromStorage() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('tdCurrent') || 'null');
+        if (saved && saved.text) {
+            currentTDItem = saved;
+            if (questionEl) questionEl.textContent = saved.text;
+            if (actionStatusEl) {
+                const user = localStorage.getItem('currentUser') || 'guest';
+                const isCreator = user === saved.createdBy;
+                actionStatusEl.textContent = isCreator ? 'You started this. Waiting for partner...' : 'Please mark Done or Not Done.';
+                actionStatusEl.classList.remove('success', 'fail');
+            }
+            updateTDActionVisibility();
+        } else {
+            // No active item; keep buttons disabled/hidden
+            if (actionButtonsEl) actionButtonsEl.style.display = 'none';
+        }
+    } catch (e) {
+        if (actionButtonsEl) actionButtonsEl.style.display = 'none';
+    }
+}
 });
 
 // Check if user is already logged in
@@ -46,6 +70,8 @@ window.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('*').forEach(el => el.style.display = '');
         setTogetherText();
         startBirthdayCountdown();
+        // Restore any active Truth/Dare and update visibility for this user
+        restoreTDFromStorage();
     }
 });
 
@@ -617,23 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initMoodCalendar();
     updateAnniversaryCounter();
     // Restore active Truth/Dare item if present
-    try {
-        const saved = JSON.parse(localStorage.getItem('tdCurrent') || 'null');
-        if (saved && saved.text) {
-            currentTDItem = saved;
-            if (questionEl) questionEl.textContent = saved.text;
-            if (actionStatusEl) {
-                actionStatusEl.textContent = 'Waiting for partner to mark Done/Not Done...';
-                actionStatusEl.classList.remove('success', 'fail');
-            }
-            updateTDActionVisibility();
-        } else {
-            // No active item; keep buttons disabled/hidden
-            if (actionButtonsEl) actionButtonsEl.style.display = 'none';
-        }
-    } catch (e) {
-        if (actionButtonsEl) actionButtonsEl.style.display = 'none';
-    }
+    restoreTDFromStorage();
 });
 
 function updateTDActionVisibility() {
