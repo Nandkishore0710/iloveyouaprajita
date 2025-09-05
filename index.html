@@ -85,12 +85,29 @@
             <div class="container">
                 <h2>Truth & Dare</h2>
                 <div class="game-container">
+                    <div class="category-selector">
+                        <label for="td-category">Category:</label>
+                        <select id="td-category">
+                            <option value="all">All</option>
+                            <option value="caring">Caring</option>
+                            <option value="sweet">Sweet</option>
+                            <option value="naughty">Naughty</option>
+                            <option value="flirty">Flirty</option>
+                            <option value="funny">Funny</option>
+                            <option value="deep">Deep</option>
+                        </select>
+                    </div>
                     <div class="game-buttons">
                         <button id="truth-btn" class="btn">Truth</button>
                         <button id="dare-btn" class="btn">Dare</button>
                     </div>
                     <div class="game-result">
                         <p id="question">Click a button above to get a question!</p>
+                        <div class="action-buttons">
+                            <button id="mark-done" class="btn" disabled>Done ✅</button>
+                            <button id="mark-not-done" class="btn" disabled>Not Done ❌</button>
+                            <span id="action-status" class="action-status"></span>
+                        </div>
                     </div>
                 </div>
             </div>
