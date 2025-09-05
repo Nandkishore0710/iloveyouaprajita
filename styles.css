@@ -547,6 +547,29 @@ a:hover {
     margin-bottom: 2rem;
 }
 
+/* Truth & Dare: Category Selector */
+.category-selector {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.category-selector label {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.category-selector select {
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: 'Montserrat', sans-serif;
+    background: white;
+    box-shadow: var(--shadow);
+}
+
 #truth-btn {
     background: linear-gradient(135deg, var(--blue), #6ab7e0);
 }
@@ -567,6 +590,31 @@ a:hover {
     font-size: 1.2rem;
     line-height: 1.6;
 }
+
+/* Truth & Dare: Action Buttons */
+.action-buttons {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    filter: grayscale(15%);
+}
+
+.action-status {
+    min-height: 1.2rem;
+    font-size: 0.95rem;
+    color: #666;
+}
+
+.action-status.success { color: #2e7d32; }
+.action-status.fail { color: #c62828; }
 
 /* Notes Section */
 .notes-container {
