@@ -3,6 +3,20 @@ const loginForm = document.getElementById('login-form');
 const loginOverlay = document.getElementById('login-overlay');
 const errorMessage = document.getElementById('error-message');
 
+// Early restore: keep user logged in across refresh using localStorage as source of truth
+try {
+    if (localStorage.getItem('isLoggedIn') === 'true') {
+        document.body.classList.add('logged-in');
+        if (loginOverlay) loginOverlay.style.display = 'none';
+        document.querySelectorAll('*').forEach(el => el.style.display = '');
+        // Ensure sessionStorage is also set for current tab features
+        if (!sessionStorage.getItem('isLoggedIn')) {
+            sessionStorage.setItem('isLoggedIn', 'true');
+            sessionStorage.setItem('currentUser', localStorage.getItem('currentUser') || 'guest');
+        }
+    }
+} catch (_) {}
+
 // Valid users (in a real app, this would be handled server-side with proper authentication)
 const validUsers = {
     'rishi': 'password123',
@@ -22,9 +36,11 @@ loginForm?.addEventListener('submit', (e) => {
         loginOverlay.style.display = 'none';
         document.querySelectorAll('*').forEach(el => el.style.display = '');
         
-        // Store login state in sessionStorage
+        // Store login state in sessionStorage + localStorage (persist across refresh/pages)
         sessionStorage.setItem('isLoggedIn', 'true');
         sessionStorage.setItem('currentUser', username);
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('currentUser', username);
         
         // Initialize fixed dates
         setTogetherText();
@@ -616,15 +632,17 @@ window.addEventListener('storage', (e) => {
     }
 });
 
-// Check if user is already logged in (per tab)
+// Check if user is already logged in (per tab / restore from localStorage)
 window.addEventListener('DOMContentLoaded', () => {
     // Dev auto-login when opened from file:// to avoid local script ordering/CORS issues
     if (location.protocol === 'file:' && !sessionStorage.getItem('isLoggedIn')) {
         console.log('[DEV] Auto-login (file://) enabled');
         sessionStorage.setItem('isLoggedIn', 'true');
         sessionStorage.setItem('currentUser', 'rishi');
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('currentUser', 'rishi');
     }
-    if (sessionStorage.getItem('isLoggedIn') === 'true') {
+    if (sessionStorage.getItem('isLoggedIn') === 'true' || localStorage.getItem('isLoggedIn') === 'true') {
         document.body.classList.add('logged-in');
         loginOverlay.style.display = 'none';
         document.querySelectorAll('*').forEach(el => el.style.display = '');
@@ -675,6 +693,8 @@ logoutBtn?.addEventListener('click', () => {
     // Clear login state
     sessionStorage.removeItem('isLoggedIn');
     sessionStorage.removeItem('currentUser');
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('currentUser');
     
     // Redirect to login page
     window.location.reload();
