@@ -22,15 +22,17 @@ loginForm?.addEventListener('submit', (e) => {
         loginOverlay.style.display = 'none';
         document.querySelectorAll('*').forEach(el => el.style.display = '');
         
-        // Store login state in localStorage
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('currentUser', username);
+        // Store login state in sessionStorage
+        sessionStorage.setItem('isLoggedIn', 'true');
+        sessionStorage.setItem('currentUser', username);
         
         // Initialize fixed dates
         setTogetherText();
         startBirthdayCountdown();
         // Restore any active Truth/Dare and update visibility for this user
         restoreTDFromStorage();
+        // Init floating companion across pages
+        initFloatingCompanion();
     } else {
         // Show error message
         errorMessage.style.display = 'block';
@@ -38,6 +40,552 @@ loginForm?.addEventListener('submit', (e) => {
             errorMessage.style.display = 'none';
         }, 3000);
     }
+});
+
+// Utility: dynamically load Three.js if not present
+function ensureThree() {
+    return new Promise((resolve, reject) => {
+        if (typeof THREE !== 'undefined') return resolve();
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/three@0.156.1/build/three.min.js';
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Failed to load Three.js'));
+        document.head.appendChild(s);
+    });
+}
+
+// Floating 3D companion that appears on every page
+async function initFloatingCompanion() {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return;
+    // Create container if missing
+    let container = document.getElementById('companion-3d');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'companion-3d';
+        Object.assign(container.style, {
+            position: 'fixed', right: '18px', bottom: '18px', width: '220px', height: '220px',
+            zIndex: '50', pointerEvents: 'auto'
+        });
+        document.body.appendChild(container);
+    }
+    if (container._started) return; // prevent duplicate init
+    container._started = true;
+
+    try { await ensureThree(); } catch { return; }
+    if (typeof THREE === 'undefined') return;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 50);
+    camera.position.set(0, 0.4, 3.4);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.innerHTML = '';
+    container.appendChild(renderer.domElement);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+    const dir = new THREE.DirectionalLight(0xc9a0dc, 0.8);
+    dir.position.set(2, 3, 2);
+    scene.add(ambient, dir);
+
+    // Mini avatar (reuse similar parts)
+    const avatar = new THREE.Group();
+    scene.add(avatar);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.42, 0.8, 20), new THREE.MeshStandardMaterial({ color: 0x89cff0 }));
+    body.position.y = -0.1;
+    avatar.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 20, 20), new THREE.MeshStandardMaterial({ color: 0xfffff0 }));
+    head.position.y = 0.55; avatar.add(head);
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+    const eye = new THREE.SphereGeometry(0.04, 10, 10);
+    const le = new THREE.Mesh(eye, eyeMat), re = new THREE.Mesh(eye, eyeMat);
+    le.position.set(-0.11, 0.02, 0.24); re.position.set(0.11, 0.02, 0.24); head.add(le, re);
+    const armMat = new THREE.MeshStandardMaterial({ color: 0xc9a0dc });
+    const L = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.4, 14), armMat);
+    const R = L.clone();
+    L.position.set(-0.42, 0.15, 0); L.rotation.z = -0.6; avatar.add(L);
+    R.position.set(0.42, 0.15, 0); R.rotation.z = 0.6; avatar.add(R);
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2(0,0);
+    function lookAtPointer(e) {
+        const rect = container.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width; const y = (e.clientY - rect.top) / rect.height;
+        pointer.x = x * 2 - 1; pointer.y = -(y * 2 - 1);
+        raycaster.setFromCamera(pointer, camera);
+        const p = raycaster.ray.origin.clone().add(raycaster.ray.direction.clone().multiplyScalar(3));
+        head.lookAt(p);
+    }
+    container.addEventListener('pointermove', lookAtPointer);
+    container.addEventListener('click', () => { R.rotation.z = 1.2; setTimeout(()=>{ R.rotation.z = 0.6; }, 300); });
+
+    let t = 0, blinkT = 1.5;
+    function animate() {
+        requestAnimationFrame(animate);
+        t += 0.016;
+        avatar.position.y = Math.sin(t*1.5)*0.03;
+        blinkT -= 0.016; if (blinkT <= 0) { le.scale.y = re.scale.y = 0.1; setTimeout(()=>{ le.scale.y = re.scale.y = 1; }, 110); blinkT = 2 + Math.random()*2.5; }
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    function resize() {
+        const w = container.clientWidth, h = container.clientHeight;
+        camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
+    }
+    window.addEventListener('resize', resize);
+}
+
+    // Add floating hearts (vintage romantic vibe)
+    function createHeartGeometry(size = 0.4) {
+        const shape = new THREE.Shape();
+        const x = 0, y = 0;
+        shape.moveTo(x, y);
+        shape.bezierCurveTo(x, y, x - size/2, y - size/2, x - size, y);
+        shape.bezierCurveTo(x - size*1.4, y + size*0.6, x - size*0.1, y + size*1.2, x, y + size*1.6);
+        shape.bezierCurveTo(x + size*0.1, y + size*1.2, x + size*1.4, y + size*0.6, x + size, y);
+        shape.bezierCurveTo(x + size/2, y - size/2, x, y, x, y);
+        const geom = new THREE.ShapeGeometry(shape, 24);
+        // make it face camera by default (billboard-like)
+        geom.rotateX(Math.PI);
+        return geom;
+    }
+
+    const heartGeom = createHeartGeometry(0.45);
+    const heartCount = isMobile ? 4 : 8;
+    for (let i = 0; i < heartCount; i++) {
+        const mat = new THREE.MeshStandardMaterial({ color: 0xf8c8dc, metalness: 0.05, roughness: 0.7, emissive: 0xEEA7C6, emissiveIntensity: 0.05 });
+        const heart = new THREE.Mesh(heartGeom, mat);
+        heart.position.set((Math.random()-0.5)*5.5, (Math.random()-0.5)*2.8, (Math.random()-0.5)*3.5);
+        const s = 0.8 + Math.random()*0.6;
+        heart.scale.setScalar(s);
+        heart.userData = { rotSpeed: 0.0015 + Math.random()*0.003, floatAmp: 0.05 + Math.random()*0.1, floatPhase: Math.random()*Math.PI*2 };
+        objects.push(heart);
+        group.add(heart);
+    }
+
+// Cozy 3D: Lightweight Three.js scene for Home hero
+async function initHero3DScene() {
+    const container = document.getElementById('hero-3d-container');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = window.matchMedia('(max-width: 640px)').matches;
+    if (!container || reduceMotion) return;
+    // Show a tiny loading badge while we ensure Three.js
+    let badge = document.getElementById('hero3d-loading');
+    if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'hero3d-loading';
+        Object.assign(badge.style, { position: 'absolute', top: '12px', right: '12px', padding: '6px 10px', borderRadius: '10px', fontSize: '12px', color: 'var(--heading)', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(6px)', zIndex: 4, opacity: 0.85 });
+        badge.textContent = 'Loading 3D…';
+        document.querySelector('.hero')?.appendChild(badge);
+    }
+    try { await ensureThree(); } catch (e) { badge && (badge.textContent = '3D unavailable'); return; }
+    if (typeof THREE === 'undefined') { badge && (badge.textContent = '3D unavailable'); return; }
+    badge && badge.remove();
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(55, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(0, 0.2, 6);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    container.innerHTML = '';
+    container.appendChild(renderer.domElement);
+
+    // Lighting with cozy vintage tone
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    const warm = new THREE.DirectionalLight(0xffe6d5, 0.7);
+    warm.position.set(2, 3, 2);
+    const cool = new THREE.DirectionalLight(0xd5e9ff, 0.5);
+    cool.position.set(-2, -1, -2);
+    scene.add(ambient, warm, cool);
+
+    // Palette matching Ivory, Blue, Wisteria, Blush
+    const palette = [0xfffff0, 0x89cff0, 0xc9a0dc, 0xf8c8dc];
+
+    // Group of floating objects
+    const group = new THREE.Group();
+    scene.add(group);
+
+    const objects = [];
+    const geoChoices = [
+        new THREE.TorusGeometry(0.5, 0.18, 24, 64),
+        new THREE.IcosahedronGeometry(0.45, 0),
+        new THREE.OctahedronGeometry(0.42, 0)
+    ];
+
+    // Create floating geometric pieces (fewer on small screens)
+    const geoCount = isMobile ? 7 : 12;
+    for (let i = 0; i < geoCount; i++) {
+        const geom = geoChoices[i % geoChoices.length].clone();
+        const color = palette[i % palette.length];
+        const mat = new THREE.MeshStandardMaterial({
+            color,
+            metalness: 0.2,
+            roughness: 0.35,
+            transparent: true,
+            opacity: 0.9
+        });
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.position.set(
+            (Math.random() - 0.5) * 6,
+            (Math.random() - 0.5) * 3,
+            (Math.random() - 0.5) * 4
+        );
+        mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        const s = 0.7 + Math.random() * 0.6;
+        mesh.scale.setScalar(isMobile ? s * 0.8 : s);
+        mesh.userData = {
+            rotSpeed: 0.003 + Math.random() * 0.004,
+            floatAmp: 0.08 + Math.random() * 0.12,
+            floatPhase: Math.random() * Math.PI * 2
+        };
+        objects.push(mesh);
+        group.add(mesh);
+    }
+
+    // Subtle particles
+    const pGeom = new THREE.BufferGeometry();
+    const pCount = isMobile ? 60 : 120;
+    const positions = new Float32Array(pCount * 3);
+    for (let i = 0; i < pCount; i++) {
+        positions[i * 3] = (Math.random() - 0.5) * 8;
+        positions[i * 3 + 1] = (Math.random() - 0.5) * 4;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 6;
+    }
+    pGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const pMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.02, opacity: 0.4, transparent: true });
+    const points = new THREE.Points(pGeom, pMat);
+    scene.add(points);
+
+    // Cute Avatar (low-poly) -------------------------------------------------
+    const avatar = new THREE.Group();
+    avatar.position.set(0, -0.4, 0);
+    scene.add(avatar);
+
+    // Body
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x89cff0, roughness: 0.6, metalness: 0.1 });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.5, 1.0, 24), bodyMat);
+    body.position.y = 0.0;
+    avatar.add(body);
+
+    // Head
+    const headMat = new THREE.MeshStandardMaterial({ color: 0xfffff0, roughness: 0.5, metalness: 0.05 });
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 24, 24), headMat);
+    head.position.y = 0.8;
+    avatar.add(head);
+
+    // Eyes
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 1.0, metalness: 0.0 });
+    const eyeGeo = new THREE.SphereGeometry(0.05, 12, 12);
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.position.set(-0.14, 0.04, 0.32);
+    rightEye.position.set(0.14, 0.04, 0.32);
+    head.add(leftEye, rightEye);
+
+    // Arms
+    const armMat = new THREE.MeshStandardMaterial({ color: 0xc9a0dc, roughness: 0.6 });
+    function makeArm(side = 1) {
+        const arm = new THREE.Group();
+        const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.5, 16), armMat);
+        upper.position.y = -0.25;
+        upper.rotation.z = side * 0.15;
+        arm.add(upper);
+        arm.position.set(side * 0.5, 0.35, 0);
+        arm.rotation.z = side * 0.8;
+        return { group: arm, upper };
+    }
+    const L = makeArm(-1);
+    const R = makeArm(1);
+    avatar.add(L.group, R.group);
+
+    // Blink animation
+    let blinkT = 0;
+    function blink(dt) {
+        blinkT -= dt;
+        if (blinkT <= 0) {
+            // close
+            leftEye.scale.y = rightEye.scale.y = 0.1;
+            setTimeout(() => { leftEye.scale.y = rightEye.scale.y = 1; }, 120);
+            blinkT = 2 + Math.random() * 3; // next blink in 2-5s
+        }
+    }
+
+    // Pointer look-at for head
+    const tmpVec = new THREE.Vector3();
+    function updateHeadLook() {
+        // project pointer ray into scene and get a point in front
+        raycaster.setFromCamera(pointer, camera);
+        tmpVec.copy(raycaster.ray.origin).add(raycaster.ray.direction.clone().multiplyScalar(5));
+        head.lookAt(tmpVec);
+    }
+
+    // Wave on click and show message bubble
+    const messages = [
+        'Hi cutie! 💖', 'You look amazing today ✨', 'Forever us 💞', 'Sending hugs 🤗', 'You + Me = ❤️'
+    ];
+    let waving = 0;
+    function waveOnce() {
+        waving = 0.6; // seconds
+        showBubble(messages[Math.floor(Math.random() * messages.length)]);
+    }
+
+    // Simple DOM bubble
+    let bubbleEl = null; 
+    function ensureBubble() {
+        if (bubbleEl) return bubbleEl;
+        bubbleEl = document.createElement('div');
+        bubbleEl.className = 'avatar-bubble';
+        bubbleEl.style.position = 'absolute';
+        bubbleEl.style.top = '18%';
+        bubbleEl.style.right = '12%';
+        bubbleEl.style.padding = '10px 14px';
+        bubbleEl.style.borderRadius = '12px';
+        bubbleEl.style.background = 'rgba(255,255,255,0.12)';
+        bubbleEl.style.border = '1px solid rgba(255,255,255,0.2)';
+        bubbleEl.style.backdropFilter = 'blur(6px)';
+        bubbleEl.style.color = 'var(--heading)';
+        bubbleEl.style.boxShadow = '0 10px 24px rgba(0,0,0,0.25)';
+        bubbleEl.style.zIndex = '4';
+        bubbleEl.style.opacity = '0';
+        bubbleEl.style.transition = 'opacity .25s ease, transform .25s ease';
+        const hero = document.querySelector('.hero');
+        hero && hero.appendChild(bubbleEl);
+        return bubbleEl;
+    }
+    function showBubble(text) {
+        const el = ensureBubble();
+        el.textContent = text;
+        el.style.transform = 'translateY(-6px)';
+        el.style.opacity = '1';
+        clearTimeout(el._hideTimer);
+        el._hideTimer = setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(0)';
+        }, 1600);
+    }
+
+    container.addEventListener('click', waveOnce);
+
+    // Interactivity: pointer rotation, hover, click bursts, drag spin
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    let hovered = null;
+    let targetRotX = 0, targetRotY = 0; // eased group rotation toward pointer
+    let drag = { active: false, lastX: 0, lastY: 0, vx: 0, vy: 0 };
+
+    function onPointerMove(e) {
+        const rect = container.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        pointer.x = x * 2 - 1;
+        pointer.y = -(y * 2 - 1);
+        // Aim group rotation toward pointer
+        targetRotY = (x - 0.5) * 0.5; // yaw
+        targetRotX = (y - 0.5) * -0.3; // pitch
+        // Hover highlight
+        raycaster.setFromCamera(pointer, camera);
+        const intersects = raycaster.intersectObjects(objects, false);
+        const hit = intersects[0]?.object || null;
+        if (hovered && hovered !== hit) {
+            hovered.scale.multiplyScalar(1 / 1.12);
+            hovered.material.emissive && (hovered.material.emissiveIntensity = 0);
+            hovered = null;
+        }
+        if (hit && hovered !== hit) {
+            hovered = hit;
+            hovered.scale.multiplyScalar(1.12);
+            if (hovered.material.emissive !== undefined) {
+                hovered.material.emissive = new THREE.Color(0xffffff);
+                hovered.material.emissiveIntensity = 0.15;
+            }
+        }
+        if (drag.active) {
+            const dx = e.clientX - drag.lastX;
+            const dy = e.clientY - drag.lastY;
+            drag.vx = dx * 0.002;
+            drag.vy = dy * 0.002;
+            group.rotation.y += drag.vx;
+            group.rotation.x += -drag.vy;
+            drag.lastX = e.clientX;
+            drag.lastY = e.clientY;
+        }
+    }
+
+    function onPointerDown(e) {
+        drag.active = true;
+        drag.lastX = e.clientX;
+        drag.lastY = e.clientY;
+    }
+    function onPointerUp() {
+        drag.active = false;
+    }
+
+    function spawnBurst() {
+        // Spawn small particle burst at hovered or center
+        const burstGeom = new THREE.BufferGeometry();
+        const N = 60;
+        const pos = new Float32Array(N * 3);
+        for (let i = 0; i < N; i++) {
+            const r = Math.random() * 0.6 + 0.2;
+            const th = Math.random() * Math.PI * 2;
+            const ph = Math.random() * Math.PI;
+            pos[i * 3 + 0] = r * Math.cos(th) * Math.sin(ph);
+            pos[i * 3 + 1] = r * Math.sin(th) * Math.sin(ph);
+            pos[i * 3 + 2] = r * Math.cos(ph);
+        }
+        burstGeom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const c = [0xfffff0, 0x89cff0, 0xc9a0dc, 0xf8c8dc][Math.floor(Math.random() * 4)];
+        const burstMat = new THREE.PointsMaterial({ color: c, size: 0.04, transparent: true, opacity: 0.9 });
+        const sys = new THREE.Points(burstGeom, burstMat);
+        sys.position.copy(hovered ? hovered.position.clone() : new THREE.Vector3(0, 0, 0));
+        group.add(sys);
+        // Fade out and remove
+        let life = 1.0;
+        const tick = () => {
+            life -= 0.03;
+            sys.material.opacity = Math.max(life, 0);
+            sys.scale.setScalar(1 + (1 - life) * 0.8);
+            if (life > 0) requestAnimationFrame(tick); else group.remove(sys);
+        };
+        requestAnimationFrame(tick);
+    }
+
+    container.addEventListener('pointermove', onPointerMove);
+    container.addEventListener('pointerdown', onPointerDown);
+    container.addEventListener('pointerup', onPointerUp);
+    container.addEventListener('click', spawnBurst);
+
+    let rafId;
+    const clock = new THREE.Clock();
+    let scrollY = 0;
+    const onScroll = () => {
+        // map scroll within viewport to a small z and y offset for parallax
+        const maxShift = 0.6;
+        const maxZ = 0.8;
+        const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+        const y = window.scrollY;
+        const ratio = Math.max(0, Math.min(1, y / vh));
+        group.position.y = -ratio * maxShift;
+        camera.position.z = 6 + ratio * maxZ;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    function animate() {
+        rafId = requestAnimationFrame(animate);
+        const t = clock.getElapsedTime();
+        objects.forEach((m) => {
+            m.rotation.y += m.userData.rotSpeed;
+            m.rotation.x += m.userData.rotSpeed * 0.6;
+            m.position.y += Math.sin(t * 1.2 + m.userData.floatPhase) * m.userData.floatAmp * 0.02;
+        });
+        // Avatar idle + wave
+        const dt = clock.getDelta();
+        blink(dt);
+        updateHeadLook();
+        if (waving > 0) {
+            R.group.rotation.z = 0.8 + Math.sin(t * 10) * 0.4;
+            waving -= dt;
+        } else {
+            R.group.rotation.z += (0.8 - R.group.rotation.z) * 0.1;
+        }
+        // Subtle pointer attraction to hovered point
+        if (hovered) {
+            const towards = hovered.position.clone().multiplyScalar(0.02);
+            group.position.lerp(towards, 0.02);
+        } else {
+            group.position.lerp(new THREE.Vector3(0, group.position.y, 0), 0.03);
+        }
+        // Ease group rotation toward pointer target
+        group.rotation.y += (targetRotY - group.rotation.y) * 0.04;
+        group.rotation.x += (targetRotX - group.rotation.x) * 0.04;
+        // Apply inertia when dragging has ended
+        if (!drag.active) {
+            group.rotation.y *= 0.995;
+            group.rotation.x *= 0.995;
+        }
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    function onResize() {
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        if (w === 0 || h === 0) return;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    }
+    window.addEventListener('resize', onResize);
+
+    // Cleanup if navigating SPA-style (safety)
+    const cleanup = () => {
+        cancelAnimationFrame(rafId);
+        renderer.dispose();
+        scene.clear();
+        container.removeEventListener('pointermove', onPointerMove);
+        container.removeEventListener('pointerdown', onPointerDown);
+        container.removeEventListener('pointerup', onPointerUp);
+        container.removeEventListener('click', spawnBurst);
+        window.removeEventListener('resize', onResize);
+        window.removeEventListener('scroll', onScroll);
+    };
+    window.addEventListener('beforeunload', cleanup);
+}
+
+// Cozy 3D: Tilt cards gently on pointer move
+function initTiltEffects() {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (reduceMotion || isMobile) return;
+
+    const tiltElements = document.querySelectorAll('.tilt');
+    tiltElements.forEach((el) => {
+        const maxTilt = 6; // degrees
+        const tilt = (e) => {
+            const rect = el.getBoundingClientRect();
+            const px = (e.clientX - rect.left) / rect.width; // 0..1
+            const py = (e.clientY - rect.top) / rect.height; // 0..1
+            const rx = (py - 0.5) * -2 * maxTilt; // invert for natural feel
+            const ry = (px - 0.5) * 2 * maxTilt;
+            el.style.transform = `perspective(800px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) translateZ(0)`;
+        };
+        const reset = () => {
+            el.style.transform = 'perspective(800px) rotateX(0deg) rotateY(0deg) translateZ(0)';
+        };
+        el.addEventListener('mousemove', tilt);
+        el.addEventListener('mouseleave', reset);
+        el.addEventListener('mouseenter', (e) => tilt(e));
+    });
+}
+
+// Cozy 3D: Subtle parallax for hero
+function initHeroParallax() {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (reduceMotion || isMobile) return;
+    const hero = document.querySelector('.hero');
+    const content = document.querySelector('.hero-content');
+    if (!hero || !content) return;
+    const onMove = (e) => {
+        const rect = hero.getBoundingClientRect();
+        const px = (e.clientX - rect.left) / rect.width; // 0..1
+        const py = (e.clientY - rect.top) / rect.height; // 0..1
+        const tx = (px - 0.5) * 16; // translate range
+        const ty = (py - 0.5) * 12;
+        content.style.transform = `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0)`;
+    };
+    const reset = () => {
+        content.style.transform = 'translate3d(0,0,0)';
+    };
+    hero.addEventListener('mousemove', onMove);
+    hero.addEventListener('mouseleave', reset);
+}
 
 function restoreTDFromStorage() {
     try {
@@ -46,7 +594,7 @@ function restoreTDFromStorage() {
             currentTDItem = saved;
             if (questionEl) questionEl.textContent = saved.text;
             if (actionStatusEl) {
-                const user = localStorage.getItem('currentUser') || 'guest';
+                const user = sessionStorage.getItem('currentUser') || 'guest';
                 const isCreator = user === saved.createdBy;
                 actionStatusEl.textContent = isCreator ? 'You started this. Waiting for partner...' : 'Please mark Done or Not Done.';
                 actionStatusEl.classList.remove('success', 'fail');
@@ -60,11 +608,23 @@ function restoreTDFromStorage() {
         if (actionButtonsEl) actionButtonsEl.style.display = 'none';
     }
 }
+
+// Sync across tabs/windows: listen for changes to localStorage (tdCurrent only)
+window.addEventListener('storage', (e) => {
+    if (e.key === 'tdCurrent') {
+        restoreTDFromStorage();
+    }
 });
 
-// Check if user is already logged in
+// Check if user is already logged in (per tab)
 window.addEventListener('DOMContentLoaded', () => {
-    if (localStorage.getItem('isLoggedIn') === 'true') {
+    // Dev auto-login when opened from file:// to avoid local script ordering/CORS issues
+    if (location.protocol === 'file:' && !sessionStorage.getItem('isLoggedIn')) {
+        console.log('[DEV] Auto-login (file://) enabled');
+        sessionStorage.setItem('isLoggedIn', 'true');
+        sessionStorage.setItem('currentUser', 'rishi');
+    }
+    if (sessionStorage.getItem('isLoggedIn') === 'true') {
         document.body.classList.add('logged-in');
         loginOverlay.style.display = 'none';
         document.querySelectorAll('*').forEach(el => el.style.display = '');
@@ -72,6 +632,8 @@ window.addEventListener('DOMContentLoaded', () => {
         startBirthdayCountdown();
         // Restore any active Truth/Dare and update visibility for this user
         restoreTDFromStorage();
+        // Init floating companion across pages
+        initFloatingCompanion();
     }
 });
 
@@ -111,8 +673,8 @@ const logoutBtn = document.getElementById('logout-btn');
 
 logoutBtn?.addEventListener('click', () => {
     // Clear login state
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('currentUser');
+    sessionStorage.removeItem('isLoggedIn');
+    sessionStorage.removeItem('currentUser');
     
     // Redirect to login page
     window.location.reload();
@@ -281,7 +843,7 @@ function renderTDItem(type, category, text) {
         type,
         category,
         text,
-        createdBy: localStorage.getItem('currentUser') || 'guest',
+        createdBy: sessionStorage.getItem('currentUser') || 'guest',
         timestamp: new Date().toISOString()
     };
     questionEl.textContent = text;
@@ -298,7 +860,7 @@ function renderTDItem(type, category, text) {
 
 function finalizeTD(status) {
     if (!currentTDItem) return;
-    const marker = localStorage.getItem('currentUser') || 'guest';
+    const marker = sessionStorage.getItem('currentUser') || 'guest';
     // Only allow partner (not creator) to mark
     if (marker === currentTDItem.createdBy) {
         return; // creator cannot mark their own prompt
@@ -644,11 +1206,23 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAnniversaryCounter();
     // Restore active Truth/Dare item if present
     restoreTDFromStorage();
+    // Fallback: poll localStorage periodically to handle cases where storage events don't fire
+    setInterval(() => {
+        restoreTDFromStorage();
+    }, 1500);
+    // Initialize cozy 3D effects
+    initTiltEffects();
+    initHeroParallax();
+    initHero3DScene();
+    // Also create floating companion for all pages if logged in
+    if (sessionStorage.getItem('isLoggedIn') === 'true') {
+        initFloatingCompanion();
+    }
 });
 
 function updateTDActionVisibility() {
     if (!actionButtonsEl) return;
-    const user = localStorage.getItem('currentUser') || 'guest';
+    const user = sessionStorage.getItem('currentUser') || 'guest';
     if (!currentTDItem) {
         actionButtonsEl.style.display = 'none';
         markDoneBtn && (markDoneBtn.disabled = true);

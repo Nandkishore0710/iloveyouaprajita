@@ -28,18 +28,17 @@
     <!-- Navigation -->
     <nav id="navbar">
         <div class="nav-container">
-            <a href="#" class="logo">Our Love Story</a>
+            <a href="index.html" class="logo">Our Love Story</a>
             <div class="nav-links">
-                <a href="#home">Home</a>
-                <a href="#countdown">Countdown</a>
-                <a href="#truth-dare">Truth & Dare</a>
-                <a href="#love-notes">Love Notes</a>
-                <a href="#gallery">Gallery</a>
-                <a href="#bucket-list">Bucket List</a>
-                <a href="#anniversary">Anniversary</a>
-                <a href="#songs">Our Songs</a>
-                <a href="#mood">Mood Tracker</a>
-                <a href="#secret">Secret Messages</a>
+                <a href="index.html" class="active">Home</a>
+                <a href="truth-dare.html">Truth & Dare</a>
+                <a href="notes.html">Love Notes</a>
+                <a href="gallery.html">Gallery</a>
+                <a href="bucket.html">Bucket List</a>
+                <a href="journey.html">Journey</a>
+                <a href="songs.html">Our Songs</a>
+                <a href="mood.html">Mood</a>
+                <a href="secret.html">Secret</a>
                 <button id="logout-btn" class="logout-btn">Logout</button>
             </div>
             <button class="menu-toggle">☰</button>
@@ -52,202 +51,54 @@
             <h1>Together Since <span id="together-date">August 6, 2025</span></h1>
             <p class="tagline">Every love story is beautiful, but ours is my favorite.</p>
         </div>
+        <div id="hero-3d-container" class="hero-3d" aria-hidden="true"></div>
     </header>
 
     <main>
-        <!-- Birthday Countdown -->
-        <section id="countdown" class="section">
+        <section class="section">
             <div class="container">
-                <h2>Birthday Countdown</h2>
-                <div class="countdown-container">
-                    <div class="countdown-item">
-                        <span id="days">00</span>
-                        <span>Days</span>
-                    </div>
-                    <div class="countdown-item">
-                        <span id="hours">00</span>
-                        <span>Hours</span>
-                    </div>
-                    <div class="countdown-item">
-                        <span id="minutes">00</span>
-                        <span>Minutes</span>
-                    </div>
-                    <div class="countdown-item">
-                        <span id="seconds">00</span>
-                        <span>Seconds</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Truth & Dare -->
-        <section id="truth-dare" class="section">
-            <div class="container">
-                <h2>Truth & Dare</h2>
-                <div class="game-container">
-                    <div class="category-selector">
-                        <label for="td-category">Category:</label>
-                        <select id="td-category">
-                            <option value="all">All</option>
-                            <option value="caring">Caring</option>
-                            <option value="sweet">Sweet</option>
-                            <option value="naughty">Naughty</option>
-                            <option value="flirty">Flirty</option>
-                            <option value="funny">Funny</option>
-                            <option value="deep">Deep</option>
-                        </select>
-                    </div>
-                    <div class="game-buttons">
-                        <button id="truth-btn" class="btn">Truth</button>
-                        <button id="dare-btn" class="btn">Dare</button>
-                    </div>
-                    <div class="game-result">
-                        <p id="question">Click a button above to get a question!</p>
-                        <div class="action-buttons">
-                            <button id="mark-done" class="btn" disabled>Done ✅</button>
-                            <button id="mark-not-done" class="btn" disabled>Not Done ❌</button>
-                            <span id="action-status" class="action-status"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Love Notes -->
-        <section id="love-notes" class="section">
-            <div class="container">
-                <h2>Love Notes</h2>
-                <div class="notes-container">
-                    <div class="note-input">
-                        <textarea id="note-text" placeholder="Write your love note here..."></textarea>
-                        <button id="add-note" class="btn">Save Note</button>
-                    </div>
-                    <div id="notes-list" class="notes-grid">
-                        <!-- Notes will be added here by JavaScript -->
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Photo Gallery -->
-        <section id="gallery" class="section">
-            <div class="container">
-                <h2>Our Memories</h2>
-                <div class="gallery-upload">
-                    <input type="file" id="photo-upload" accept="image/*" multiple>
-                    <label for="photo-upload" class="btn">Choose Photos</label>
-                </div>
-                <div id="gallery-grid" class="gallery-grid">
-                    <!-- Photos will be added here by JavaScript -->
-                </div>
-            </div>
-        </section>
-
-        <!-- Bucket List -->
-        <section id="bucket-list" class="section">
-            <div class="container">
-                <h2>Our Bucket List</h2>
-                <div class="bucket-input">
-                    <input type="text" id="bucket-item" placeholder="Add a new bucket list item">
-                    <button id="add-bucket-item" class="btn">Add</button>
-                </div>
-                <ul id="bucket-list-items" class="bucket-list">
-                    <!-- Bucket list items will be added here by JavaScript -->
-                </ul>
-            </div>
-        </section>
-
-        <!-- Anniversary Counter -->
-        <section id="anniversary" class="section">
-            <div class="container">
-                <h2>Our Journey</h2>
-                <div class="anniversary-container">
-                    <div class="anniversary-box">
-                        <span id="together-days">0</span>
-                        <p>Days Together</p>
-                    </div>
-                    <div class="anniversary-box">
-                        <span id="together-months">0</span>
-                        <p>Months</p>
-                    </div>
-                    <div class="anniversary-box">
-                        <span id="together-years">0</span>
-                        <p>Years</p>
-                    </div>
-                </div>
-                <div class="anniversary-date">
-                    <p>Since: <span id="start-date-static">August 6, 2025</span></p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Song Dedication -->
-        <section id="songs" class="section">
-            <div class="container">
-                <h2>Our Songs</h2>
-                <div class="songs-container">
-                    <div class="song-input">
-                        <input type="text" id="song-title" placeholder="Song title">
-                        <input type="text" id="song-artist" placeholder="Artist">
-                        <input type="text" id="song-link" placeholder="YouTube or Spotify link">
-                        <button id="add-song" class="btn">Add Song</button>
-                    </div>
-                    <div id="songs-list" class="songs-grid">
-                        <!-- Songs will be added here by JavaScript -->
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Mood Tracker -->
-        <section id="mood" class="section">
-            <div class="container">
-                <h2>Mood Tracker</h2>
-                <div class="mood-container">
-                    <div class="mood-selector">
-                        <p>How are you feeling today?</p>
-                        <div class="mood-options">
-                            <button class="mood-option" data-mood="happy">😊 Happy</button>
-                            <button class="mood-option" data-mood="loved">🥰 Loved</button>
-                            <button class="mood-option" data-mood="romantic">💝 Romantic</button>
-                            <button class="mood-option" data-mood="playful">😄 Playful</button>
-                            <button class="mood-option" data-mood="grateful">🙏 Grateful</button>
-                        </div>
-                    </div>
-                    <div class="mood-calendar">
-                        <h3>Mood History</h3>
-                        <div id="mood-calendar-grid">
-                            <!-- Mood calendar will be generated by JavaScript -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Secret Message -->
-        <section id="secret" class="section">
-            <div class="container">
-                <h2>Secret Message Decoder</h2>
-                <div class="secret-container">
-                    <div class="secret-encoder">
-                        <h3>Encode a Message</h3>
-                        <textarea id="message-to-encode" placeholder="Type your secret message..."></textarea>
-                        <button id="encode-btn" class="btn">Encode</button>
-                        <div class="encoded-result">
-                            <p>Your encoded message:</p>
-                            <div id="encoded-message" class="encoded-box"></div>
-                            <button id="copy-encoded" class="btn-small">Copy</button>
-                        </div>
-                    </div>
-                    <div class="secret-decoder">
-                        <h3>Decode a Message</h3>
-                        <textarea id="message-to-decode" placeholder="Paste encoded message here..."></textarea>
-                        <button id="decode-btn" class="btn">Decode</button>
-                        <div class="decoded-result">
-                            <p>Decoded message:</p>
-                            <div id="decoded-message" class="decoded-box"></div>
-                        </div>
-                    </div>
+                <h2>Explore Together</h2>
+                <div class="features-grid">
+                    <a class="feature-card tilt" href="truth-dare.html">
+                        <div class="feature-icon">🎲</div>
+                        <h3>Truth & Dare</h3>
+                        <p>Play sweet, flirty, and funny prompts with categories.</p>
+                    </a>
+                    <a class="feature-card tilt" href="notes.html">
+                        <div class="feature-icon">📝</div>
+                        <h3>Love Notes</h3>
+                        <p>Save and relive heartfelt notes over time.</p>
+                    </a>
+                    <a class="feature-card tilt" href="gallery.html">
+                        <div class="feature-icon">📸</div>
+                        <h3>Gallery</h3>
+                        <p>Collect your best moments in one place.</p>
+                    </a>
+                    <a class="feature-card tilt" href="bucket.html">
+                        <div class="feature-icon">🎯</div>
+                        <h3>Bucket List</h3>
+                        <p>Dream big and tick them off together.</p>
+                    </a>
+                    <a class="feature-card tilt" href="journey.html">
+                        <div class="feature-icon">⏳</div>
+                        <h3>Journey</h3>
+                        <p>See days, months, and years together since your day one.</p>
+                    </a>
+                    <a class="feature-card tilt" href="songs.html">
+                        <div class="feature-icon">🎵</div>
+                        <h3>Our Songs</h3>
+                        <p>Dedicate tracks and play them right here.</p>
+                    </a>
+                    <a class="feature-card tilt" href="mood.html">
+                        <div class="feature-icon">🌈</div>
+                        <h3>Mood</h3>
+                        <p>Track feelings day by day with a cute calendar.</p>
+                    </a>
+                    <a class="feature-card tilt" href="secret.html">
+                        <div class="feature-icon">🔐</div>
+                        <h3>Secret</h3>
+                        <p>Encode cute messages only you two can decode.</p>
+                    </a>
                 </div>
             </div>
         </section>
@@ -261,6 +112,8 @@
     </footer>
 
     <!-- JavaScript -->
+    <!-- Three.js only on Home for 3D cozy scene -->
+    <script src="https://unpkg.com/three@0.156.1/build/three.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
